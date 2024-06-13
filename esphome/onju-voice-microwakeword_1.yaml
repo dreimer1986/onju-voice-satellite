@@ -304,7 +304,7 @@ esp32_touch:
   smooth_mode: IIR_2
 
   # denoise_grade: 8
-  denoise_cap_level: L0
+  # denoise_cap_level: L0
 
 binary_sensor:
   - platform: esp32_touch
