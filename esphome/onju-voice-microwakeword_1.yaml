@@ -303,7 +303,7 @@ esp32_touch:
   jitter_step: 0
   smooth_mode: IIR_2
 
-  denoise_grade: 8
+  # denoise_grade: 8
   denoise_cap_level: L0
 
 binary_sensor:
