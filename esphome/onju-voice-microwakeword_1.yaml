@@ -7,9 +7,8 @@ external_components:
   - source:
       type: git
       url: https://github.com/gnumpi/esphome_audio
-      ref: fix_mic_resampler
-    components: [ adf_pipeline, i2s_audio ]
-    refresh: 0d
+      ref: dev-next
+    components: [adf_pipeline, i2s_audio]
 
 esphome:
   name: "${name}"
@@ -52,9 +51,6 @@ esphome:
           blue: 0%
       - delay: 1s
       - script.execute: reset_led
-      - media_player.volume_set:
-          id: onju_out
-          volume: 0.25
 
 dashboard_import:
   package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice-microwakeword_1.yaml@main
@@ -68,7 +64,6 @@ esp32:
       # need to set a s3 compatible board for the adf-sdk to compile
       # board specific code is not used though
       CONFIG_ESP32_S3_BOX_BOARD: "y"
-      CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY: "y"
 
 psram:
   mode: octal
@@ -157,8 +152,8 @@ adf_pipeline:
     channel: left
 
   - platform: i2s_audio
-    type: audio_in
-    id: adf_i2s_in
+    type: audio
+    id: adf_i2s
     i2s_audio_id: i2s_shared
     i2s_din_pin: GPIO17
     channel: left
@@ -173,7 +168,7 @@ microphone:
     keep_pipeline_alive: true
     gain_log2: 3
     pipeline:
-      - adf_i2s_in
+      - adf_i2s
       - resampler
       - self
 
