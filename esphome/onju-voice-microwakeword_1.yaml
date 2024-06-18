@@ -152,8 +152,8 @@ adf_pipeline:
     channel: left
 
   - platform: i2s_audio
-    type: audio
-    id: adf_i2s
+    type: audio_in
+    id: adf_i2s_in
     i2s_audio_id: i2s_shared
     i2s_din_pin: GPIO17
     channel: left
@@ -168,7 +168,7 @@ microphone:
     keep_pipeline_alive: true
     gain_log2: 3
     pipeline:
-      - adf_i2s
+      - adf_i2s_in
       - resampler
       - self
 
