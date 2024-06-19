@@ -210,7 +210,7 @@ voice_assistant:
   id: va
   microphone: onju_microphone
   media_player: onju_out
-  use_wake_word: true
+  use_wake_word: false
   on_listening:
     - light.turn_on:
         id: top_led
