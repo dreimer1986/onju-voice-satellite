@@ -56,14 +56,9 @@ dashboard_import:
   package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice.yaml@main
 
 esp32:
-  board: arduino
+  board: esp32-s3-devkitc-1
   framework:
-    type: esp-idf
-    version: recommended
-    sdkconfig_options:
-      # need to set a s3 compatible board for the adf-sdk to compile
-      # board specific code is not used though
-      CONFIG_ESP32_S3_BOX_BOARD: "y"
+    type: arduino
 
 psram:
   mode: octal
