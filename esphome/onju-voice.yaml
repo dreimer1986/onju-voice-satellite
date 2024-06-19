@@ -3,6 +3,12 @@ substitutions:
   friendly_name: "Onju Voice Satellite"
   project_version: "1.0.0"
   device_description: "Onju Voice Satellite with ESPHome software"
+external_components:
+  - source:
+      type: git
+      url: https://github.com/gnumpi/esphome_audio
+      ref: dev-next
+    components: [adf_pipeline, i2s_audio]
 
 esphome:
   name: "${name}"
@@ -12,9 +18,10 @@ esphome:
   project:
     name: tetele.onju_voice_satellite
     version: "${project_version}"
-  min_version: 2023.11.6
+  min_version: 2024.3.0
   platformio_options:
     board_build.flash_mode: dio
+    build_flags: "-DBOARD_HAS_PSRAM"
     board_build.arduino.memory_type: qio_opi
   on_boot:
     then:
@@ -46,12 +53,17 @@ esphome:
       - script.execute: reset_led
 
 dashboard_import:
-  package_import_url: github://tetele/onju-voice-satellite/esphome/onju-voice.yaml@main
+  package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice.yaml@main
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
-    type: arduino
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      # need to set a s3 compatible board for the adf-sdk to compile
+      # board specific code is not used though
+      CONFIG_ESP32_S3_BOX_BOARD: "y"
 
 psram:
   mode: octal
@@ -122,20 +134,55 @@ interval:
           button: 2
 
 i2s_audio:
-  - i2s_lrclk_pin: GPIO13
+  - id: i2s_shared
+    i2s_lrclk_pin: GPIO13
     i2s_bclk_pin: GPIO18
+    access_mode: duplex
+
+adf_pipeline:
+  - platform: i2s_audio
+    type: audio_out
+    id: adf_i2s_out
+    i2s_audio_id: i2s_shared
+    i2s_dout_pin: GPIO12
+    sample_rate: 44100
+    adf_alc: true
+    bits_per_sample: 32bit
+    fixed_settings: true
+    channel: left
+
+  - platform: i2s_audio
+    type: audio_in
+    id: adf_i2s_in
+    i2s_audio_id: i2s_shared
+    i2s_din_pin: GPIO17
+    channel: left
+    pdm: false
+    sample_rate: 44100
+    bits_per_sample: 32bit
+    fixed_settings: true
+
+microphone:
+  - platform: adf_pipeline
+    id: onju_microphone
+    keep_pipeline_alive: true
+    gain_log2: 3
+    pipeline:
+      - adf_i2s_in
+      - resampler
+      - self
 
 media_player:
-  - platform: i2s_audio
-    name: None
+  - platform: adf_pipeline
     id: onju_out
-    dac_type: external
-    i2s_dout_pin: GPIO12
-    mode: mono
-    mute_pin:
-      number: GPIO21
-      inverted: True
-    on_state: 
+    name: None
+    internal: false
+    keep_pipeline_alive: true
+    pipeline:
+      - self
+      - resampler
+      - adf_i2s_out
+    on_state:
       then:
         - lambda: |-
             static float old_volume = -1;
@@ -146,13 +193,6 @@ media_player:
               }
             }
             old_volume = new_volume;
-
-microphone:
-  - platform: i2s_audio
-    id: onju_microphone
-    i2s_din_pin: GPIO17
-    adc_type: external
-    pdm: false
 
 voice_assistant:
   id: va
@@ -516,10 +556,10 @@ script:
       button: int
     then:
       - lambda: |-
-          static byte thresh_indices[3] = {0, 0, 0};
+          static uint8_t thresh_indices[3] = {0, 0, 0};
           static uint32_t sums[3] = {0, 0, 0};
-          static byte qsizes[3] = {0, 0, 0};
-          static int consecutive_anomalies_per_button[3] = {0, 0, 0};
+          static uint8_t qsizes[3] = {0, 0, 0};
+          static uint16_t consecutive_anomalies_per_button[3] = {0, 0, 0};
 
           uint32_t newval;
           uint32_t* calibration_values;
@@ -599,3 +639,9 @@ switch:
       - script.execute: turn_on_wake_word
     on_turn_off:
       - script.execute: turn_off_wake_word
+  - platform: gpio
+    id: dac_mute
+    restore_mode: ALWAYS_OFF
+    pin:
+      number: GPIO21
+      inverted: True
