@@ -568,7 +568,6 @@ script:
                       red: 100%
                       green: 0%
                       brightness: 60%
-                      effect: listening_ww
                 else:
                   - light.turn_off: top_led
 
@@ -596,7 +595,6 @@ script:
     then:
       - light.turn_on:
           id: top_led
-          effect: show_volume
       - delay: 1s
       - script.execute: reset_led
 
