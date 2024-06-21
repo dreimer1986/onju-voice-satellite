@@ -481,44 +481,6 @@ light:
         from: 1
         to: 4
     default_transition_length: 100ms
-    effects:
-      - pulse:
-          name: pulse
-          transition_length: 250ms
-          update_interval: 250ms
-      - pulse:
-          name: slow_pulse
-          transition_length: 1s
-          update_interval: 2s
-      - addressable_lambda:
-          name: show_volume
-          update_interval: 50ms
-          lambda: |-
-            int int_volume = int(id(onju_out).volume * 100.0f * it.size());
-            int full_leds = int_volume / 100;
-            int last_brightness = int_volume % 100;
-            int i = 0;
-            for(; i < full_leds; i++) {
-              it[i] = Color::WHITE;
-            }
-            if(i < 4) {
-              it[i++] = Color(64, 64, 64).fade_to_white(last_brightness*256/100);
-            }
-            for(; i < it.size(); i++) {
-              it[i] = Color(64, 64, 64);
-            }
-      - addressable_twinkle:
-          name: listening_ww
-          twinkle_probability: 1%
-      - addressable_twinkle:
-          name: listening
-          twinkle_probability: 45%
-      - addressable_scan:
-          name: processing
-          move_interval: 80ms
-      - addressable_flicker:
-          name: speaking
-          intensity: 35%
   - platform: partition
     id: right_led
     segments:
