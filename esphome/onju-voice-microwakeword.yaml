@@ -21,6 +21,7 @@ esphome:
   min_version: 2024.6.0
   platformio_options:
     board_build.flash_mode: dio
+    build_flags: "-DBOARD_HAS_PSRAM"
     board_build.arduino.memory_type: qio_opi
   on_boot:
     then:
@@ -52,7 +53,7 @@ esphome:
       - script.execute: reset_led
 
 dashboard_import:
-  package_import_url: github://tetele/onju-voice-satellite/esphome/onju-voice-microwakeword.yaml@main
+  package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice-microwakeword_1.yaml@main
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -145,7 +146,7 @@ adf_pipeline:
     id: adf_i2s_out
     i2s_audio_id: i2s_shared
     i2s_dout_pin: GPIO12
-    sample_rate: 16000
+    sample_rate: 44100
     adf_alc: true
     bits_per_sample: 32bit
     fixed_settings: true
@@ -158,7 +159,7 @@ adf_pipeline:
     i2s_din_pin: GPIO17
     channel: left
     pdm: false
-    sample_rate: 16000
+    sample_rate: 44100
     bits_per_sample: 32bit
     fixed_settings: true
 
@@ -169,6 +170,7 @@ microphone:
     gain_log2: 3
     pipeline:
       - adf_i2s_in
+      - resampler
       - self
 
 media_player:
@@ -176,6 +178,7 @@ media_player:
     id: onju_out
     name: None
     internal: false
+    codec: auto
     keep_pipeline_alive: true
     pipeline:
       - self
