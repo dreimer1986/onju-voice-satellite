@@ -10,12 +10,6 @@ external_components:
       ref: dev-next
     refresh: 0s
     components: [ adf_pipeline, i2s_audio ]
-  - source:
-      type: git
-      url: https://github.com/kahrendt/esphome
-      ref:  mww-v2-external-library
-    refresh: 0s
-    components: [ micro_wake_word ]  
 
 esphome:
   name: "${name}"
@@ -212,11 +206,9 @@ micro_wake_word:
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
   vad:
-    model: https://github.com/kahrendt/microWakeWord/releases/download/v2_models/vad.json
+    model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/vad.json
   models:
-    - model: https://github.com/kahrendt/microWakeWord/releases/download/v2_models/okay_nabu.json
-    # - model: https://github.com/kahrendt/microWakeWord/releases/download/v2_models/alexa.json
-    # - model: https://github.com/kahrendt/microWakeWord/releases/download/v2_models/hey_mycroft.json
+    model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/okay_nabu.json
 
 voice_assistant:
   id: va
