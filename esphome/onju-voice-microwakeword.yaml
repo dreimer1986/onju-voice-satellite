@@ -54,7 +54,7 @@ esphome:
       - script.execute: reset_led
 
 dashboard_import:
-  package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice-microwakeword_1.yaml@main
+  package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice-microwakeword.yaml@main
 
 esp32:
   board: esp32-s3-devkitc-1
