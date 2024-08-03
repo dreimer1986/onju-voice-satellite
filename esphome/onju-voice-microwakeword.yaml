@@ -52,6 +52,9 @@ esphome:
           blue: 0%
       - delay: 1s
       - script.execute: reset_led
+      - media_player.volume_set:
+          id: onju_out
+          volume: !lambda "return id(volume_percent);"
 
 dashboard_import:
   package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice-microwakeword.yaml@main
@@ -121,6 +124,10 @@ globals:
   - id: notification
     type: bool
     restore_value: false
+  - id: volume_percent
+    type: float
+    initial_value: "0.5"
+    restore_value: yes
 
 interval:
   - interval: 1s
@@ -196,6 +203,7 @@ media_player:
               }
             }
             old_volume = new_volume;
+            id(volume_percent) = old_volume;
 
 micro_wake_word:
   on_wake_word_detected:
@@ -241,7 +249,7 @@ voice_assistant:
         green: 100%
         effect: speaking
   on_end:
-    - delay: 200ms
+#    - delay: 200ms
     - wait_until:
         not:
           media_player.is_playing: onju_out
@@ -252,7 +260,7 @@ voice_assistant:
             - switch.is_on: use_wake_word
             - binary_sensor.is_off: mute_switch
         then:
-          - delay: 200ms
+#          - delay: 200ms
           - micro_wake_word.start
   on_client_connected:
     - if:
