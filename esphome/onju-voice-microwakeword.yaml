@@ -168,7 +168,7 @@ microphone:
   - platform: adf_pipeline
     id: onju_microphone
     keep_pipeline_alive: true
-    gain_log2: 3
+#    gain_log2: 3
     pipeline:
       - adf_i2s_in
       - resampler
@@ -216,7 +216,7 @@ voice_assistant:
   media_player: onju_out
   noise_suppression_level: 2
   auto_gain: 31dBFS
-  volume_multiplier: 2.0
+#  volume_multiplier: 2.0
   on_listening:
     - light.turn_on:
         id: top_led
@@ -288,6 +288,7 @@ voice_assistant:
         green: 0%
         blue: 100%
     - delay: 1s
+    - script.execute: reset_led
   on_timer_cancelled:
     - script.execute: reset_led
   on_timer_updated:
@@ -305,23 +306,18 @@ voice_assistant:
         green: 0%
         blue: 100%
     - delay: 1s
+    - script.execute: reset_led
   on_timer_finished:
     - voice_assistant.stop:
-    - switch.turn_on: timer_ringing
+    - micro_wake_word.stop:
     - wait_until:
         not:
           microphone.is_capturing:
-    - while:
-        condition:
-          switch.is_on: timer_ringing
-        then:
-          - media_player.play_media: 'https://github.com/esphome/firmware/raw/main/voice-assistant/sounds/timer_finished.wav'
-          - delay: 1s
+    - media_player.play_media: 'https://github.com/esphome/firmware/raw/main/voice-assistant/sounds/timer_finished.wav'
     - wait_until:
-        not:
-          media_player.is_playing:
-    - switch.turn_off: timer_ringing
+        media_player.is_idle:
     - voice_assistant.start:
+    - micro_wake_word.start:
     - script.execute: reset_led
 
 number:
@@ -701,11 +697,3 @@ switch:
     pin:
       number: GPIO21
       inverted: True
-  - platform: template
-    id: timer_ringing
-    optimistic: true
-    internal: true
-    restore_mode: ALWAYS_OFF
-    on_turn_on:
-      - delay: 15min
-      - switch.turn_off: timer_ringing
