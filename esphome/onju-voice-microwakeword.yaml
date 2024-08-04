@@ -19,7 +19,7 @@ esphome:
   project:
     name: tetele.onju_voice_satellite
     version: "${project_version}"
-  min_version: 2024.6.0
+  min_version: 2024.7.0
   platformio_options:
     board_build.flash_mode: dio
     build_flags: "-DBOARD_HAS_PSRAM"
@@ -154,7 +154,7 @@ adf_pipeline:
     id: adf_i2s_out
     i2s_audio_id: i2s_shared
     i2s_dout_pin: GPIO12
-    sample_rate: 44100
+    sample_rate: 48000
     adf_alc: true
     bits_per_sample: 32bit
     fixed_settings: true
@@ -167,7 +167,7 @@ adf_pipeline:
     i2s_din_pin: GPIO17
     channel: left
     pdm: false
-    sample_rate: 44100
+    sample_rate: 48000
     bits_per_sample: 32bit
     fixed_settings: true
 
@@ -175,7 +175,6 @@ microphone:
   - platform: adf_pipeline
     id: onju_microphone
     keep_pipeline_alive: true
-#    gain_log2: 3
     pipeline:
       - adf_i2s_in
       - resampler
@@ -204,6 +203,12 @@ media_player:
             }
             old_volume = new_volume;
             id(volume_percent) = old_volume;
+    on_play:
+      - micro_wake_word.stop
+    on_pause:
+      - micro_wake_word.start
+    on_idle:
+      - micro_wake_word.start
 
 micro_wake_word:
   on_wake_word_detected:
@@ -222,9 +227,9 @@ voice_assistant:
   id: va
   microphone: onju_microphone
   media_player: onju_out
-  noise_suppression_level: 2
+  noise_suppression_level: 1
   auto_gain: 31dBFS
-#  volume_multiplier: 2.0
+  volume_multiplier: 8
   on_listening:
     - light.turn_on:
         id: top_led
@@ -249,7 +254,6 @@ voice_assistant:
         green: 100%
         effect: speaking
   on_end:
-#    - delay: 200ms
     - wait_until:
         not:
           media_player.is_playing: onju_out
@@ -260,7 +264,6 @@ voice_assistant:
             - switch.is_on: use_wake_word
             - binary_sensor.is_off: mute_switch
         then:
-#          - delay: 200ms
           - micro_wake_word.start
   on_client_connected:
     - if:
