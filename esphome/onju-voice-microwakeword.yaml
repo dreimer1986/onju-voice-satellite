@@ -223,8 +223,6 @@ voice_assistant:
   microphone: onju_microphone
   media_player: onju_out
   noise_suppression_level: 2
-#  auto_gain: 31dBFS
-#  volume_multiplier: 2
   on_listening:
     - light.turn_on:
         id: top_led
@@ -314,16 +312,26 @@ voice_assistant:
     - delay: 1s
     - script.execute: reset_led
   on_timer_finished:
-    - voice_assistant.stop:
-    - micro_wake_word.stop:
+    - if:
+        condition:
+          and:
+            - switch.is_on: use_wake_word
+            - binary_sensor.is_off: mute_switch
+        then:
+          - micro_wake_word.stop:
     - wait_until:
         not:
           microphone.is_capturing:
     - media_player.play_media: 'https://github.com/esphome/firmware/raw/main/voice-assistant/sounds/timer_finished.wav'
     - wait_until:
         media_player.is_idle:
-    - voice_assistant.start:
-    - micro_wake_word.start:
+    - if:
+        condition:
+          and:
+            - switch.is_on: use_wake_word
+            - binary_sensor.is_off: mute_switch
+        then:
+          - micro_wake_word.start
     - script.execute: reset_led
 
 number:
