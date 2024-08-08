@@ -177,7 +177,7 @@ microphone:
   - platform: adf_pipeline
     id: onju_microphone
     keep_pipeline_alive: true
-#    gain_log2: 3
+    gain_log2: 3
     pipeline:
       - adf_i2s_in
       - resampler
@@ -206,12 +206,6 @@ media_player:
             }
             old_volume = new_volume;
             id(volume_percent) = old_volume;
-    on_play:
-      - micro_wake_word.stop
-    on_pause:
-      - micro_wake_word.start
-    on_idle:
-      - micro_wake_word.start
 
 micro_wake_word:
   on_wake_word_detected:
@@ -221,18 +215,16 @@ micro_wake_word:
           - media_player.pause
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
-  vad:
-    model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/vad.json
   models:
-    model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/okay_nabu.json
+    model: okay_nabu
 
 voice_assistant:
   id: va
   microphone: onju_microphone
   media_player: onju_out
   noise_suppression_level: 2
-  auto_gain: 31dBFS
-  volume_multiplier: 2
+#  auto_gain: 31dBFS
+#  volume_multiplier: 2
   on_listening:
     - light.turn_on:
         id: top_led
