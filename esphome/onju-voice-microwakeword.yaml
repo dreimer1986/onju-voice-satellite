@@ -1,15 +1,18 @@
 substitutions:
   name: "onju-voice"
   friendly_name: "Onju Voice Satellite"
-  project_version: "1.0.0"
+  project_version: "1.1.0"
   device_description: "Onju Voice Satellite with ESPHome software and microWakeWord"
+  wakeup_sound_url: "https://github.com/tetele/onju-voice-satellite/raw/main/res/wakeup.mp3" # New Notification #7 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/736267/
+  error_sound_url: "https://github.com/tetele/onju-voice-satellite/raw/main/res/error.mp3" # Error #8 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/734442/
+  timer_finished_sound_url: "https://github.com/tetele/onju-voice-satellite/raw/main/res/timer_finished.mp3" # New Notification #6 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/734445/
+
 external_components:
   - source:
       type: git
       url: https://github.com/gnumpi/esphome_audio
       ref: dev-next
-    refresh: 0s
-    components: [ adf_pipeline, i2s_audio ]
+    components: [adf_pipeline, i2s_audio]
 
 esphome:
   name: "${name}"
@@ -19,10 +22,9 @@ esphome:
   project:
     name: tetele.onju_voice_satellite
     version: "${project_version}"
-  min_version: 2024.7.0
+  min_version: 2024.7.3
   platformio_options:
     board_build.flash_mode: dio
-    build_flags: "-DBOARD_HAS_PSRAM"
     board_build.arduino.memory_type: qio_opi
   on_boot:
     then:
@@ -52,12 +54,9 @@ esphome:
           blue: 0%
       - delay: 1s
       - script.execute: reset_led
-      - media_player.volume_set:
-          id: onju_out
-          volume: !lambda "return id(volume_percent);"
 
 dashboard_import:
-  package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice-microwakeword.yaml@main
+  package_import_url: github://tetele/onju-voice-satellite/esphome/onju-voice-microwakeword.yaml@main
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -124,10 +123,6 @@ globals:
   - id: notification
     type: bool
     restore_value: false
-  - id: volume_percent
-    type: float
-    initial_value: "0.5"
-    restore_value: yes
 
 interval:
   - interval: 1s
@@ -154,24 +149,23 @@ adf_pipeline:
     id: adf_i2s_out
     i2s_audio_id: i2s_shared
     i2s_dout_pin: GPIO12
-    fixed_settings: true
-    use_apll: true
-    channel: left
-    sample_rate: 48000
+    sample_rate: 16000
     adf_alc: true
+    alc_max: .5
     bits_per_sample: 32bit
+    fixed_settings: true
+    channel: left
 
   - platform: i2s_audio
     type: audio_in
     id: adf_i2s_in
     i2s_audio_id: i2s_shared
     i2s_din_pin: GPIO17
-    fixed_settings: true
-    use_apll: true
     channel: left
-    sample_rate: 48000
     pdm: false
+    sample_rate: 16000
     bits_per_sample: 32bit
+    fixed_settings: true
 
 microphone:
   - platform: adf_pipeline
@@ -180,7 +174,6 @@ microphone:
     gain_log2: 3
     pipeline:
       - adf_i2s_in
-      - resampler
       - self
 
 media_player:
@@ -189,7 +182,6 @@ media_player:
     name: None
     internal: false
     keep_pipeline_alive: true
-    codec: auto
     pipeline:
       - self
       - resampler
@@ -205,26 +197,32 @@ media_player:
               }
             }
             old_volume = new_volume;
-            id(volume_percent) = old_volume;
 
 micro_wake_word:
+  models:
+    #- model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/alexa.json
+    - model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/okay_nabu.json
+    #- model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/hey_jarvis.json
+    #- model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/hey_mycroft.json
+  vad:
+    model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/vad.json
   on_wake_word_detected:
     - if:
         condition: media_player.is_playing
         then:
           - media_player.pause
+    - media_player.play_media: "${wakeup_sound_url}"
+    - wait_until:
+        not:
+          media_player.is_playing: onju_out
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
-  models:
-    model: okay_nabu
 
 voice_assistant:
   id: va
   microphone: onju_microphone
   media_player: onju_out
-  noise_suppression_level: 2
-#  auto_gain: 31dBFS
-#  volume_multiplier: 2
+  use_wake_word: false
   on_listening:
     - light.turn_on:
         id: top_led
@@ -251,7 +249,7 @@ voice_assistant:
   on_end:
     - wait_until:
         not:
-          media_player.is_playing: onju_out
+          media_player.is_playing:
     - script.execute: reset_led
     - if:
         condition:
@@ -260,6 +258,20 @@ voice_assistant:
             - binary_sensor.is_off: mute_switch
         then:
           - micro_wake_word.start
+  on_timer_started:
+    - light.turn_on:
+        id: top_led
+        effect: random_twinkle
+  on_timer_finished:
+    - media_player.play_media: "${timer_finished_sound_url}"
+    - light.turn_on:
+        id: top_led
+        blue: 0%
+        red: 100%
+        green: 80%
+        effect: slow_pulse
+    - delay: 5s
+    - script.execute: reset_led
   on_client_connected:
     - if:
         condition:
@@ -278,6 +290,7 @@ voice_assistant:
           - voice_assistant.stop:
           - micro_wake_word.stop:
   on_error:
+    - media_player.play_media: "${error_sound_url}"
     - light.turn_on:
         id: top_led
         blue: 0%
@@ -285,45 +298,6 @@ voice_assistant:
         green: 0%
         effect: none
     - delay: 1s
-    - script.execute: reset_led
-  on_timer_started:
-    - light.turn_on:
-        id: top_led
-        effect: pulse
-        red: 0%
-        green: 0%
-        blue: 100%
-    - delay: 1s
-    - script.execute: reset_led
-  on_timer_cancelled:
-    - script.execute: reset_led
-  on_timer_updated:
-    - light.turn_on:
-        id: top_led
-        effect: pulse
-        red: 0%
-        green: 100%
-        blue: 0%
-    - delay: 1s
-    - light.turn_on:
-        id: top_led
-        effect: pulse
-        red: 0%
-        green: 0%
-        blue: 100%
-    - delay: 1s
-    - script.execute: reset_led
-  on_timer_finished:
-    - voice_assistant.stop:
-    - micro_wake_word.stop:
-    - wait_until:
-        not:
-          microphone.is_capturing:
-    - media_player.play_media: 'https://github.com/esphome/firmware/raw/main/voice-assistant/sounds/timer_finished.wav'
-    - wait_until:
-        media_player.is_idle:
-    - voice_assistant.start:
-    - micro_wake_word.start:
     - script.execute: reset_led
 
 number:
@@ -517,6 +491,9 @@ light:
       - addressable_flicker:
           name: speaking
           intensity: 35%
+      - addressable_random_twinkle:
+          name: random_twinkle
+          twinkle_probability: 45%
   - platform: partition
     id: right_led
     segments:
@@ -544,6 +521,7 @@ script:
                 condition:
                   and:
                     - switch.is_on: use_wake_word
+                    - switch.is_on: flicker_wake_word
                     - binary_sensor.is_off: mute_switch
                 then:
                   - light.turn_on:
@@ -697,6 +675,16 @@ switch:
       - script.execute: turn_on_wake_word
     on_turn_off:
       - script.execute: turn_off_wake_word
+  - platform: template
+    name: Wake Word Listening Light
+    id: flicker_wake_word
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: reset_led
+    on_turn_off:
+      - script.execute: reset_led
   - platform: gpio
     id: dac_mute
     restore_mode: ALWAYS_OFF
