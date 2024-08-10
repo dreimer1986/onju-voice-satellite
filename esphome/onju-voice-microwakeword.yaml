@@ -54,9 +54,12 @@ esphome:
           blue: 0%
       - delay: 1s
       - script.execute: reset_led
+      - media_player.volume_set:
+          id: onju_out
+          volume: !lambda "return id(volume_percent);"
 
 dashboard_import:
-  package_import_url: github://tetele/onju-voice-satellite/esphome/onju-voice-microwakeword.yaml@main
+  package_import_url: github://dreimer1986/onju-voice-satellite/esphome/onju-voice-microwakeword.yaml@main
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -123,6 +126,10 @@ globals:
   - id: notification
     type: bool
     restore_value: false
+  - id: volume_percent
+    type: float
+    initial_value: "0.5"
+    restore_value: yes
 
 interval:
   - interval: 1s
@@ -149,11 +156,11 @@ adf_pipeline:
     id: adf_i2s_out
     i2s_audio_id: i2s_shared
     i2s_dout_pin: GPIO12
-    sample_rate: 16000
+    sample_rate: 48000
     adf_alc: true
-    alc_max: .5
     bits_per_sample: 32bit
     fixed_settings: true
+    use_apll: true
     channel: left
 
   - platform: i2s_audio
@@ -161,9 +168,10 @@ adf_pipeline:
     id: adf_i2s_in
     i2s_audio_id: i2s_shared
     i2s_din_pin: GPIO17
+    use_apll: true
     channel: left
     pdm: false
-    sample_rate: 16000
+    sample_rate: 48000
     bits_per_sample: 32bit
     fixed_settings: true
 
@@ -174,6 +182,7 @@ microphone:
     gain_log2: 3
     pipeline:
       - adf_i2s_in
+      - resampler
       - self
 
 media_player:
@@ -182,6 +191,7 @@ media_player:
     name: None
     internal: false
     keep_pipeline_alive: true
+    codec: auto
     pipeline:
       - self
       - resampler
@@ -197,15 +207,11 @@ media_player:
               }
             }
             old_volume = new_volume;
+            id(volume_percent) = old_volume;
 
 micro_wake_word:
   models:
-    #- model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/alexa.json
-    - model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/okay_nabu.json
-    #- model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/hey_jarvis.json
-    #- model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/hey_mycroft.json
-  vad:
-    model: https://github.com/kahrendt/microWakeWord/releases/download/v2.1_models/vad.json
+    model: okay_nabu
   on_wake_word_detected:
     - if:
         condition: media_player.is_playing
@@ -223,6 +229,7 @@ voice_assistant:
   microphone: onju_microphone
   media_player: onju_out
   use_wake_word: false
+  noise_suppression_level: 2
   on_listening:
     - light.turn_on:
         id: top_led
