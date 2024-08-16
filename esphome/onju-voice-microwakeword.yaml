@@ -3,9 +3,9 @@ substitutions:
   friendly_name: "Onju Voice Satellite"
   project_version: "1.1.0"
   device_description: "Onju Voice Satellite with ESPHome software and microWakeWord"
-  wakeup_sound_url: "https://github.com/tetele/onju-voice-satellite/raw/main/res/wakeup.mp3" # New Notification #7 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/736267/
-  error_sound_url: "https://github.com/tetele/onju-voice-satellite/raw/main/res/error.mp3" # Error #8 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/734442/
-  timer_finished_sound_url: "https://github.com/tetele/onju-voice-satellite/raw/main/res/timer_finished.mp3" # New Notification #6 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/734445/
+  wakeup_sound_url: "http://192.168.181.42:8123/local/wakeup.mp3" # New Notification #7 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/736267/
+  error_sound_url: "http://192.168.181.42:8123/local/error.mp3" # Error #8 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/734442/
+  timer_finished_sound_url: "http://192.168.181.42:8123/local/timer_finished.mp3" # New Notification #6 by UNIVERSFIELD https://freesound.org/people/UNIVERSFIELD/sounds/734445/
 
 external_components:
   - source:
@@ -70,6 +70,7 @@ esp32:
       # need to set a s3 compatible board for the adf-sdk to compile
       # board specific code is not used though
       CONFIG_ESP32_S3_BOX_BOARD: "y"
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
 
 psram:
   mode: octal
@@ -191,7 +192,7 @@ media_player:
     name: None
     internal: false
     keep_pipeline_alive: true
-    codec: auto
+#    codec: auto
     pipeline:
       - self
       - resampler
@@ -219,8 +220,9 @@ micro_wake_word:
           - media_player.pause
     - media_player.play_media: "${wakeup_sound_url}"
     - wait_until:
-        not:
-          media_player.is_playing: onju_out
+        condition:
+          not:
+            media_player.is_playing: onju_out
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
 
@@ -255,8 +257,9 @@ voice_assistant:
         effect: speaking
   on_end:
     - wait_until:
-        not:
-          media_player.is_playing:
+        condition:
+          not:
+            media_player.is_playing:
     - script.execute: reset_led
     - if:
         condition:
