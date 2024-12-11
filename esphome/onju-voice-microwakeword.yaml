@@ -186,6 +186,28 @@ microphone:
       - resampler
       - self
 
+text_sensor:
+  - platform: template
+    name: "S2T Eingabe-Text"
+    id: var_stt_end
+    entity_category: diagnostic
+  - platform: template
+    name: "T2S Ausgabe-URL"
+    id: var_tts_end
+    entity_category: diagnostic
+  - platform: template
+    name: "T2S Ausgabe-Text"
+    id: var_tts_start
+    entity_category: diagnostic
+  - platform: template
+    name: "Fehler-Code"
+    id: var_err_code
+    entity_category: diagnostic
+  - platform: template
+    name: "Fehler-Nachricht"
+    id: var_err_msg
+    entity_category: diagnostic
+
 media_player:
   - platform: adf_pipeline
     id: onju_out
@@ -232,6 +254,22 @@ voice_assistant:
   media_player: onju_out
   use_wake_word: false
   noise_suppression_level: 2
+  on_start:
+    - text_sensor.template.publish:
+        id: var_stt_end
+        state: ""
+    - text_sensor.template.publish:
+        id: var_tts_end
+        state: ""
+    - text_sensor.template.publish:
+        id: var_tts_start
+        state: ""
+    - text_sensor.template.publish:
+        id: var_err_code
+        state: ""
+    - text_sensor.template.publish:
+        id: var_err_msg
+        state: ""
   on_listening:
     - light.turn_on:
         id: top_led
@@ -248,6 +286,14 @@ voice_assistant:
         green: 20%
         brightness: 70%
         effect: processing
+  on_stt_end:
+    - text_sensor.template.publish:
+        id: var_stt_end
+        state: !lambda 'return x;'
+  on_tts_start:
+    - text_sensor.template.publish:
+        id: var_tts_start
+        state: !lambda 'return x;'
   on_tts_end:
     - light.turn_on:
         id: top_led
@@ -255,6 +301,9 @@ voice_assistant:
         red: 20%
         green: 100%
         effect: speaking
+    - text_sensor.template.publish:
+        id: var_tts_end
+        state: !lambda 'return x;'
   on_end:
     - wait_until:
         condition:
@@ -309,6 +358,12 @@ voice_assistant:
         effect: none
     - delay: 1s
     - script.execute: reset_led
+    - text_sensor.template.publish:
+        id: var_err_code
+        state: !lambda 'return code;'
+    - text_sensor.template.publish:
+        id: var_err_msg
+        state: !lambda 'return message;'
 
 number:
   - platform: template
