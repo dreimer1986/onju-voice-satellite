@@ -65,7 +65,8 @@ esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: esp-idf
-    version: recommended
+    version: 4.4.8
+    platform_version: 5.4.0
     sdkconfig_options:
       # need to set a s3 compatible board for the adf-sdk to compile
       # board specific code is not used though
@@ -99,7 +100,10 @@ api:
   services:
     - service: start_va
       then:
-        - voice_assistant.start
+        - voice_assistant.start:
+    - service: start_va_continuous
+      then:
+        - voice_assistant.start_continuous:
     - service: stop_va
       then:
         - voice_assistant.stop
@@ -130,7 +134,7 @@ globals:
   - id: volume_percent
     type: float
     initial_value: "0.5"
-    restore_value: yes
+    restore_value: true
 
 interval:
   - interval: 1s
@@ -188,33 +192,28 @@ microphone:
 
 text_sensor:
   - platform: template
-    name: "S2T Eingabe-Text"
-    id: var_stt_end
-    entity_category: diagnostic
-  - platform: template
     name: "T2S Ausgabe-URL"
     id: var_tts_end
-    entity_category: diagnostic
-  - platform: template
-    name: "T2S Ausgabe-Text"
-    id: var_tts_start
+    icon: mdi:file-link
     entity_category: diagnostic
   - platform: template
     name: "Fehler-Code"
     id: var_err_code
+    icon: mdi:robot-vacuum-alert
     entity_category: diagnostic
   - platform: template
     name: "Fehler-Nachricht"
     id: var_err_msg
+    icon: mdi:alert-circle
     entity_category: diagnostic
 
 media_player:
   - platform: adf_pipeline
     id: onju_out
+    icon: mdi:assistant
     name: None
     internal: false
     keep_pipeline_alive: true
-#    codec: auto
     pipeline:
       - self
       - resampler
@@ -244,7 +243,7 @@ micro_wake_word:
     - wait_until:
         condition:
           not:
-            media_player.is_playing: onju_out
+            media_player.is_playing
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
 
@@ -254,22 +253,6 @@ voice_assistant:
   media_player: onju_out
   use_wake_word: false
   noise_suppression_level: 2
-  on_start:
-    - text_sensor.template.publish:
-        id: var_stt_end
-        state: ""
-    - text_sensor.template.publish:
-        id: var_tts_end
-        state: ""
-    - text_sensor.template.publish:
-        id: var_tts_start
-        state: ""
-    - text_sensor.template.publish:
-        id: var_err_code
-        state: ""
-    - text_sensor.template.publish:
-        id: var_err_msg
-        state: ""
   on_listening:
     - light.turn_on:
         id: top_led
@@ -286,14 +269,6 @@ voice_assistant:
         green: 20%
         brightness: 70%
         effect: processing
-  on_stt_end:
-    - text_sensor.template.publish:
-        id: var_stt_end
-        state: !lambda 'return x;'
-  on_tts_start:
-    - text_sensor.template.publish:
-        id: var_tts_start
-        state: !lambda 'return x;'
   on_tts_end:
     - light.turn_on:
         id: top_led
@@ -308,7 +283,7 @@ voice_assistant:
     - wait_until:
         condition:
           not:
-            media_player.is_playing:
+            media_player.is_playing
     - script.execute: reset_led
     - if:
         condition:
@@ -369,6 +344,7 @@ number:
   - platform: template
     name: "Touch threshold percentage"
     id: touch_threshold_percentage
+    icon: mdi:gesture-tap
     update_interval: never
     entity_category: config
     initial_value: 0.75
@@ -398,8 +374,14 @@ esp32_touch:
   denoise_cap_level: L0
 
 binary_sensor:
+  - platform: template
+    id: conversation_mode
+    name: "Conversation Mode"
+    icon: mdi:forum
   - platform: esp32_touch
     id: volume_down
+    name: "VOL-"
+    icon: mdi:volume-minus
     pin: GPIO4
     threshold: 539000
     on_press:
@@ -423,6 +405,8 @@ binary_sensor:
 
   - platform: esp32_touch
     id: volume_up
+    name: "VOL+"
+    icon: mdi:volume-plus
     pin: GPIO2
     threshold: 580000
     on_press:
@@ -448,7 +432,7 @@ binary_sensor:
     id: action
     pin: GPIO3
     threshold: 751000
-    on_click:
+    on_press:
       - if:
           condition:
             or:
@@ -459,6 +443,9 @@ binary_sensor:
                 tag: "action_click"
                 format: "Voice assistant is running: %s"
                 args: ['id(va).is_running() ? "yes" : "no"']
+            - binary_sensor.template.publish:
+                id: conversation_mode
+                state: OFF
             - if:
                 condition: media_player.is_playing
                 then:
@@ -477,6 +464,9 @@ binary_sensor:
                 condition: media_player.is_playing
                 then:
                   - media_player.stop
+            - binary_sensor.template.publish:
+                id: conversation_mode
+                state: ON
             - voice_assistant.stop
             - delay: 1s
             - script.execute: reset_led
@@ -485,6 +475,7 @@ binary_sensor:
 
   - platform: gpio
     id: mute_switch
+    icon: mdi:microphone-message-off
     pin:
       number: GPIO38
       mode: INPUT_PULLUP
@@ -589,13 +580,25 @@ script:
                     - switch.is_on: flicker_wake_word
                     - binary_sensor.is_off: mute_switch
                 then:
-                  - light.turn_on:
-                      id: top_led
-                      blue: 100%
-                      red: 100%
-                      green: 0%
-                      brightness: 60%
-                      effect: listening_ww
+                  - if:
+                      condition:
+                        - binary_sensor.is_off: conversation_mode
+                      then:
+                        - light.turn_on:
+                            id: top_led
+                            blue: 100%
+                            red: 0%
+                            green: 100%
+                            brightness: 60%
+                            effect: listening_ww
+                      else:
+                        - light.turn_on:
+                            id: top_led
+                            blue: 0%
+                            red: 100%
+                            green: 100%
+                            brightness: 60%
+                            effect: listening_ww
                 else:
                   - light.turn_off: top_led
 
@@ -734,6 +737,7 @@ switch:
   - platform: template
     name: Use Wake Word
     id: use_wake_word
+    icon: mdi:microphone-message
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
     on_turn_on:
@@ -743,6 +747,7 @@ switch:
   - platform: template
     name: Wake Word Listening Light
     id: flicker_wake_word
+    icon: mdi:microphone-settings
     entity_category: config
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
@@ -752,6 +757,7 @@ switch:
       - script.execute: reset_led
   - platform: gpio
     id: dac_mute
+    icon: mdi:volume-off
     restore_mode: ALWAYS_OFF
     pin:
       number: GPIO21
