@@ -433,45 +433,40 @@ binary_sensor:
     pin: GPIO3
     threshold: 751000
     on_press:
-      - if:
-          condition:
-            or:
-              - switch.is_off: use_wake_word
-              - binary_sensor.is_on: mute_switch
-          then:
-            - logger.log:
-                tag: "action_click"
-                format: "Voice assistant is running: %s"
-                args: ['id(va).is_running() ? "yes" : "no"']
-            - binary_sensor.template.publish:
-                id: conversation_mode
-                state: OFF
+      then:
+        - if:
+            condition: voice_assistant.is_running
+            then:
+              - voice_assistant.stop:
+              - wait_until:
+                  condition:
+                    not:
+                      media_player.is_playing
+              - delay: 200ms
+              - micro_wake_word.start
+            else:
             - if:
                 condition: media_player.is_playing
                 then:
-                  - media_player.stop
-            - if:
-                condition: voice_assistant.is_running
-                then:
-                  - voice_assistant.stop:
+                  - media_player.pause
+                  - wait_until:
+                      condition:
+                        not:
+                          media_player.is_playing
                 else:
-                  - voice_assistant.start:
-          else:
-            - logger.log:
-                tag: "action_click"
-                format: "Voice assistant was running with wake word detection enabled. Starting continuously"
-            - if:
-                condition: media_player.is_playing
-                then:
-                  - media_player.stop
-            - binary_sensor.template.publish:
-                id: conversation_mode
-                state: ON
-            - voice_assistant.stop
-            - delay: 1s
-            - script.execute: reset_led
-            - script.wait: reset_led
-            - voice_assistant.start_continuous:
+                - if:
+                    condition: media_player.is_paused
+                    then:
+                      - media_player.play
+        - delay: 750ms
+        - if:
+            condition:
+              binary_sensor.is_on: action
+            then:
+              - media_player.stop
+              - micro_wake_word.stop
+              - voice_assistant.start:
+
 
   - platform: gpio
     id: mute_switch
